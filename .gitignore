@@ -1,0 +1,13 @@
+# Ignore executable files
+*.exe
+*.EXE
+
+# Ignore object files
+*.obj
+*.OBJ
+
+# Ignore COM files
+*.com
+*.COM
+/.vscode
+*.MAP
