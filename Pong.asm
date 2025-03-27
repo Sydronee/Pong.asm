@@ -10,8 +10,21 @@
     score       dw 0
     player1Pos  dw 0
     player2Pos  dw 0
+    prevPlayer1Pos dw 0
+    prevPlayer2Pos  dw 0
+    p1Up        dw 0
+    p1Down      dw 0
+    p2Up        dw 0
+    p2Down      dw 0
+
 .code
-main proc
+PUBLIC _Input
+PUBLIC _FrameUpdate
+PUBLIC _Setup
+PUBLIC _Exit
+
+;description
+_Setup proc
     mov ax, @data
     mov ds, ax
     mov ax, 0A000h     ; Set ES to video memory segment (A000h)
@@ -19,72 +32,90 @@ main proc
 
     mov ax, 13h
     int 10h            ; Set video mode 13h (320x200, 256 colors)
-gameLoop:
-    call drawGame
-    call updateBallPos
-    ; call keyPressTest
+    retf
+_Setup endp
 
-    call createPlayer2
-    call createPlayer1
-    call delay          ; crude delay to slow movement
-    jmp gameLoop
-main endp
+_FrameUpdate PROC FAR
+    push ds
+    call gameCycle
+    pop ds
+    retf
+_FrameUpdate ENDP
+
+_Exit PROC
+    MOV AH, 00
+    MOV AL, 03h    
+    INT 10h        
+    retf
+_Exit ENDP
 
 ;description
-keyPressTest proc
-    push ax 
-    push bx
-    push cx
-    push dx
-    push si
-    push di
+gameCycle proc
+    call Input
+    call createPlayer1
+    call createPlayer2
 
-    mov ah, 01h
-    int 16h
-    
-    jz asd
-    ; Read key press
-    mov ah, 00h
-    int 16h
+    call updateBallPos
+    call drawGame
+    ;call delay          ; crude delay to slow movement
+    ret
+gameCycle endp
 
-    cmp ah, 48h
-    je green
-    
-    cmp ah, 50h
-    je blue
-    
-    jmp white
+_Input PROC FAR
+    push bp          
+    mov bp, sp       
 
-    green:
-        xor di, di              ; Start at the beginning of video memory
-        mov cx, 320*200         ; Total pixels in Mode 13h
-        mov al, 02h
-        rep stosb               ; Fill entire screen with black
-        jmp asd
+    mov ax, [bp+6]   
+    mov bx, [bp+8]   
+    mov cx, [bp+10]   
+    mov dx, [bp+12]   
 
-    blue:
-        xor di, di              ; Start at the beginning of video memory
-        mov cx, 320*200        ; Total pixels in Mode 13h
-        mov al, 04h
-        rep stosb               ; Fill entire screen with black
-        jmp asd
+    mov p1Up, ax
+    mov p1Down, bx
+    mov p2Up, cx
+    mov p2Down, dx
 
-    white:
-        xor di, di              ; Start at the beginning of video memory
-        mov cx, 320*200         ; Total pixels in Mode 13h
-        mov al, 0Fh
-        rep stosb               ; Fill entire screen with black
-        jmp asd
-        
-    asd:
-        pop di
-        pop si
-        pop dx
-        pop cx
-        pop bx
-        pop ax
-        ret
-keyPressTest endp
+    pop bp         
+    retf
+_Input ENDP
+
+Input proc
+    cmp [p1Up], 1
+    jne next01
+    cmp [player1Pos], 0
+    jbe next01
+    mov ax, [player1Pos]
+    mov [prevPlayer1Pos], ax
+    sub [player1Pos], 320
+next01:
+
+    cmp [p1Down], 1
+    jne next02
+    cmp [player1Pos], 320*175
+    jae next02
+    mov ax, [player1Pos]
+    mov [prevPlayer1Pos], ax
+    add [player1Pos], 320
+next02:
+    cmp [p2Up], 1
+    jne next03
+    cmp [player2Pos], 0
+    jbe next03
+    mov ax, [player2Pos]
+    mov [prevPlayer2Pos], ax
+    sub [player2Pos], 320
+next03:
+    cmp [p2Down], 1
+    jne next04
+    cmp [player2Pos], 320*175
+    jae next04
+    mov ax, [player2Pos]
+    mov [prevPlayer2Pos], ax
+    add [player2Pos], 320
+next04:
+
+ret
+Input endp
 
 createPlayer2 proc
     push ax
@@ -96,45 +127,14 @@ createPlayer2 proc
 
     mov di, [player2Pos]          ; Load the player's current position
     
-    mov ah, 01h
-    int 16h
+    mov ax, 0A000h
+    mov es, ax         ; Set ES to video memory segment
 
-    jz no_key_press2    ; If no key press, skip to drawing
+    mov cx, 25         ; Number of rows (height of the screen)
+    mov al, 0          ; Color (black) to clear
 
-    ; Read key press
-    mov ah, 00h
-    int 16h
+    mov si, [prevPlayer2Pos]
 
-    ; Check scan code
-    cmp ah, 11h       ; Up arrow key scan code
-    je up_arrow2
-
-    cmp ah, 1Fh       ; Down arrow key scan code
-    je down_arrow2
-
-    jmp no_key_press2   ; If not up or down arrow, skip to drawing
-
-    up_arrow2:
-        cmp di, 319        ; Check if at the top edge
-        jbe no_key_press2    ; If at the top, skip to drawing
-        sub di, 320        ; Move up one row
-        jmp no_key_press2
-
-    down_arrow2:
-        cmp di, 319*175  ; Check if at the bottom edge
-        jae no_key_press2    ; If at the bottom, skip to drawing
-        add di, 320        ; Move down one row
-        jmp no_key_press2
-
-    no_key_press2:
-        mov ax, 0A000h
-        mov es, ax         ; Set ES to video memory segment
-
-        mov cx, 25         ; Number of rows (height of the screen)
-        mov al, 0          ; Color (black) to clear
-
-        mov si, [player2Pos]
-        mov [player2Pos], di  ; Save the new position
     clear_line2:
         mov es:[si+318], al    ; Clear pixel
         mov es:[si+319], al  ; Clear pixel
@@ -160,7 +160,6 @@ createPlayer2 proc
     ret
 createPlayer2 endp
 
-
 createPlayer1 proc
     push ax
     push bx
@@ -169,59 +168,24 @@ createPlayer1 proc
     push si
     push di
 
-    mov di, [player1Pos]          ; Load the player's current position
-    
-    mov ah, 01h
-    int 16h
-
-    jz no_key_press    ; If no key press, skip to drawing
-
-    ; Read key press
-    mov ah, 00h
-    int 16h
-
-    ; Check scan code
-    cmp ah, 48h        ; Up arrow key scan code
-    je up_arrow
-
-    cmp ah, 50h        ; Down arrow key scan code
-    je down_arrow
-
-    jmp no_key_press   ; If not up or down arrow, skip to drawing
-
-    up_arrow:
-        cmp di, 0        ; Check if at the top edge
-        jbe no_key_press    ; If at the top, skip to drawing
-        sub di, 320        ; Move up one row
-        jmp no_key_press
-
-    down_arrow:
-        cmp di, 320*175  ; Check if at the bottom edge
-        jae no_key_press    ; If at the bottom, skip to drawing
-        add di, 320        ; Move down one row
-        jmp no_key_press
-
-    no_key_press:
-        ; Clear the previous position
         
-        mov ax, 0A000h
-        mov es, ax         ; Set ES to video memory segment
+    mov ax, 0A000h
+    mov es, ax         ; Set ES to video memory segment
 
-        mov cx, 25         ; Number of rows (height of the screen)
-        mov al, 0          ; Color (black) to clear
+    mov cx, 25         ; Number of rows (height of the screen)
+    mov al, 0          ; Color (black) to clear
 
-        mov si, [player1Pos]
-        mov [player1Pos], di  ; Save the new position
-
+    mov di, prevPlayer1Pos          ; Load the player's current position
     clear_line:
-        mov es:[si], al    ; Clear pixel
-        mov es:[si+1], al  ; Clear pixel
-        add si, 320        ; Move to the next row (320 bytes per row in mode 13h)
+        mov es:[di], al    ; Clear pixel
+        mov es:[di+1], al  ; Clear pixel
+        add di, 320        ; Move to the next row (320 bytes per row in mode 13h)
         loop clear_line    ; Repeat for the entire line
 
         ; Draw vertical line at the new position
         mov cx, 25         ; Number of rows (height of the screen)
         mov al, 15         ; Color (white)
+        mov di, player1Pos          ; Load the player's current position
 
     draw_line:
         mov es:[di], al    ; Draw pixel
@@ -290,8 +254,6 @@ drawGame proc
     mov es:[di+640], al
     mov es:[di+641], al
     mov es:[di+642], al
-    
-
 
     pop di
     pop si
@@ -392,4 +354,4 @@ delay proc
     ret
 delay endp
 
-end main
+end

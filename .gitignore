@@ -11,3 +11,5 @@
 *.COM
 /.vscode
 *.MAP
+
+test.*
