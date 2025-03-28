@@ -49,29 +49,27 @@ _Exit ENDP
 
 gameCycle proc
     call Input
-    call createPlayer1
-    call createPlayer2
+    call drawPlayer1
+    call drawPlayer2
 
     call updateBallPos
-    call drawGame
+    call drawBall
     ret
 gameCycle endp
 
 _Input PROC FAR
-    push bp          
     mov bp, sp       
 
-    mov ax, [bp+6]   
-    mov bx, [bp+8]   
-    mov cx, [bp+10]   
-    mov dx, [bp+12]   
+    mov ax, [bp+4]   
+    mov bx, [bp+6]   
+    mov cx, [bp+8]   
+    mov dx, [bp+10]   
 
     mov p1Up, ax
     mov p1Down, bx
     mov p2Up, cx
     mov p2Down, dx
-
-    pop bp         
+        
     retf
 _Input ENDP
 
@@ -115,14 +113,7 @@ Input proc
     ret
 Input endp
 
-createPlayer1 proc
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-
+drawPlayer1 proc
     mov ax, 0A000h
     mov es, ax         ; Set ES to video memory segment
 
@@ -131,8 +122,8 @@ createPlayer1 proc
 
     mov di, prevPlayer1Pos          ; Load the player's current position
     clear_line:
-        mov es:[di], al    ; Clear pixel
-        mov es:[di+1], al  ; Clear pixel
+        mov es:[di], al   
+        mov es:[di+1], al 
         add di, 320        ; Move to the next row (320 bytes per row in mode 13h)
         loop clear_line    ; Repeat for the entire line
 
@@ -142,27 +133,13 @@ createPlayer1 proc
         mov di, player1Pos          ; Load the player's current position
 
     draw_line:
-        mov es:[di], al    ; Draw pixel
-        mov es:[di+1], al  ; Draw pixel
+        mov es:[di], al    
+        mov es:[di+1], al 
         add di, 320        ; Move to the next row (320 bytes per row in mode 13h)
         loop draw_line     ; Repeat for the entire line
-
-    pop di
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
     ret
-createPlayer1 endp
-createPlayer2 proc
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-
+drawPlayer1 endp
+drawPlayer2 proc
     mov di, [player2Pos]          ; Load the player's current position
     
     mov ax, 0A000h
@@ -174,8 +151,8 @@ createPlayer2 proc
     mov si, [prevPlayer2Pos]
 
     clear_line2:
-        mov es:[si+319], al    ; Clear pixel
-        mov es:[si+320], al  ; Clear pixel
+        mov es:[si+319], al  
+        mov es:[si+320], al  
         add si, 320        ; Move to the next row (320 bytes per row in mode 13h)
         loop clear_line2    ; Repeat for the entire line
 
@@ -184,28 +161,14 @@ createPlayer2 proc
         mov al, 15         ; Color (white)
 
     draw_line2:
-        mov es:[di+319], al    ; Draw pixel
-        mov es:[di+320], al  ; Draw pixel
+        mov es:[di+319], al  
+        mov es:[di+320], al  
         add di, 320        ; Move to the next row (320 bytes per row in mode 13h)
         loop draw_line2     ; Repeat for the entire line
-
-    pop di
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
     ret
-createPlayer2 endp
+drawPlayer2 endp
 
-drawGame proc
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-
+drawBall proc
     mov ax, [prevBallY]
     mov bx, 320
     mul bx
@@ -250,24 +213,10 @@ drawGame proc
     mov es:[di+640], al
     mov es:[di+641], al
     mov es:[di+642], al
-
-    pop di
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
     ret
-drawGame endp
+drawBall endp
 
 updateBallPos proc
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-
     ; Update X position
     mov ax, [ballX]
     mov [prevBallX], ax
@@ -306,21 +255,10 @@ updateBallPos proc
         neg [ballDirY]
 
     endUpdate:
-        pop di
-        pop si
-        pop dx
-        pop cx
-        pop bx
-        pop ax
         ret
 updateBallPos endp
 
 ClearScreen proc
-    push ax
-    push cx
-    push di
-    push es
-
     mov ax, 0A000h          ; Set ES to video memory segment
     mov es, ax
 
@@ -328,11 +266,6 @@ ClearScreen proc
     mov cx, 320*200         ; Total pixels in Mode 13h
     xor al, al              ; Color 0 (black)
     rep stosb               ; Fill entire screen with black
-
-    pop es
-    pop di
-    pop cx
-    pop ax
     ret
 ClearScreen endp
 
