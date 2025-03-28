@@ -8,8 +8,8 @@
     prevBallX   dw 1
     prevBallY   dw 1
     score       dw 0
-    player1Pos  dw 0
-    player2Pos  dw 0
+    player1Pos  dw 10
+    player2Pos  dw 310
     prevPlayer1Pos dw 0
     prevPlayer2Pos  dw 0
     p1Up        dw 0
@@ -82,7 +82,7 @@ _Input ENDP
 Input proc
     cmp [p1Up], 1
     jne next01
-    cmp [player1Pos], 0
+    cmp [player1Pos], 10
     jbe next01
     mov ax, [player1Pos]
     mov [prevPlayer1Pos], ax
@@ -99,11 +99,12 @@ next01:
 next02:
     cmp [p2Up], 1
     jne next03
-    cmp [player2Pos], 0
+    cmp [player2Pos], 311
     jbe next03
     mov ax, [player2Pos]
     mov [prevPlayer2Pos], ax
     sub [player2Pos], 320
+    
 next03:
     cmp [p2Down], 1
     jne next04
