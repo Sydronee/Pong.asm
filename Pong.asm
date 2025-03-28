@@ -11,7 +11,7 @@
     player1Pos  dw 10
     player2Pos  dw 310
     prevPlayer1Pos dw 0
-    prevPlayer2Pos  dw 0
+    prevPlayer2Pos dw 0
     p1Up        dw 0
     p1Down      dw 0
     p2Up        dw 0
@@ -34,14 +34,12 @@ _Setup proc
     int 10h            ; Set video mode 13h (320x200, 256 colors)
     retf
 _Setup endp
-
 _FrameUpdate PROC FAR
     push ds
     call gameCycle
     pop ds
     retf
 _FrameUpdate ENDP
-
 _Exit PROC
     MOV AH, 00
     MOV AL, 03h    
@@ -49,7 +47,6 @@ _Exit PROC
     retf
 _Exit ENDP
 
-;description
 gameCycle proc
     call Input
     call createPlayer1
@@ -57,7 +54,6 @@ gameCycle proc
 
     call updateBallPos
     call drawGame
-    ;call delay          ; crude delay to slow movement
     ret
 gameCycle endp
 
@@ -87,8 +83,8 @@ Input proc
     mov ax, [player1Pos]
     mov [prevPlayer1Pos], ax
     sub [player1Pos], 320
-next01:
-
+    
+    next01:
     cmp [p1Down], 1
     jne next02
     cmp [player1Pos], 320*175
@@ -96,16 +92,17 @@ next01:
     mov ax, [player1Pos]
     mov [prevPlayer1Pos], ax
     add [player1Pos], 320
-next02:
+    
+    next02:
     cmp [p2Up], 1
     jne next03
-    cmp [player2Pos], 311
+    cmp [player2Pos], 310
     jbe next03
     mov ax, [player2Pos]
     mov [prevPlayer2Pos], ax
     sub [player2Pos], 320
     
-next03:
+    next03:
     cmp [p2Down], 1
     jne next04
     cmp [player2Pos], 320*175
@@ -113,53 +110,10 @@ next03:
     mov ax, [player2Pos]
     mov [prevPlayer2Pos], ax
     add [player2Pos], 320
-next04:
-
-ret
-Input endp
-
-createPlayer2 proc
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-
-    mov di, [player2Pos]          ; Load the player's current position
     
-    mov ax, 0A000h
-    mov es, ax         ; Set ES to video memory segment
-
-    mov cx, 25         ; Number of rows (height of the screen)
-    mov al, 0          ; Color (black) to clear
-
-    mov si, [prevPlayer2Pos]
-
-    clear_line2:
-        mov es:[si+318], al    ; Clear pixel
-        mov es:[si+319], al  ; Clear pixel
-        add si, 320        ; Move to the next row (320 bytes per row in mode 13h)
-        loop clear_line2    ; Repeat for the entire line
-
-        ; Draw vertical line at the new position
-        mov cx, 25         ; Number of rows (height of the screen)
-        mov al, 15         ; Color (white)
-
-    draw_line2:
-        mov es:[di+318], al    ; Draw pixel
-        mov es:[di+319], al  ; Draw pixel
-        add di, 320        ; Move to the next row (320 bytes per row in mode 13h)
-        loop draw_line2     ; Repeat for the entire line
-
-    pop di
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
+    next04:
     ret
-createPlayer2 endp
+Input endp
 
 createPlayer1 proc
     push ax
@@ -169,7 +123,6 @@ createPlayer1 proc
     push si
     push di
 
-        
     mov ax, 0A000h
     mov es, ax         ; Set ES to video memory segment
 
@@ -202,6 +155,48 @@ createPlayer1 proc
     pop ax
     ret
 createPlayer1 endp
+createPlayer2 proc
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+
+    mov di, [player2Pos]          ; Load the player's current position
+    
+    mov ax, 0A000h
+    mov es, ax         ; Set ES to video memory segment
+
+    mov cx, 25         ; Number of rows (height of the screen)
+    mov al, 0          ; Color (black) to clear
+
+    mov si, [prevPlayer2Pos]
+
+    clear_line2:
+        mov es:[si+319], al    ; Clear pixel
+        mov es:[si+320], al  ; Clear pixel
+        add si, 320        ; Move to the next row (320 bytes per row in mode 13h)
+        loop clear_line2    ; Repeat for the entire line
+
+        ; Draw vertical line at the new position
+        mov cx, 25         ; Number of rows (height of the screen)
+        mov al, 15         ; Color (white)
+
+    draw_line2:
+        mov es:[di+319], al    ; Draw pixel
+        mov es:[di+320], al  ; Draw pixel
+        add di, 320        ; Move to the next row (320 bytes per row in mode 13h)
+        loop draw_line2     ; Repeat for the entire line
+
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+createPlayer2 endp
 
 drawGame proc
     push ax
@@ -340,19 +335,5 @@ ClearScreen proc
     pop ax
     ret
 ClearScreen endp
-
-;------------------------------------------------------------
-; Crude delay loop to slow down game speed.
-; Adjust the value in CX as needed.
-;------------------------------------------------------------
-delay proc
-    push cx
-    mov cx, 02FFFh
-    delay_loop:
-        nop
-        loop delay_loop
-    pop cx
-    ret
-delay endp
 
 end
