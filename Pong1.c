@@ -18,10 +18,10 @@ int main()
 		Input(is_key_pressed(','), is_key_pressed('-'), is_key_pressed('K'), is_key_pressed('M'));
 		// 					left				right				up					down
 		FrameUpdate();
-		delay(20);
+		delay(10);
 	}
-	Exit();
 	uninstall_key_handler();
+	Exit();
 
 	return 0;
 }

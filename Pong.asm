@@ -34,12 +34,14 @@ _Setup proc
     int 10h            ; Set video mode 13h (320x200, 256 colors)
     retf
 _Setup endp
+
 _FrameUpdate PROC FAR
     push ds
     call gameCycle
     pop ds
     retf
 _FrameUpdate ENDP
+
 _Exit PROC
     MOV AH, 00
     MOV AL, 03h    
@@ -139,6 +141,7 @@ drawPlayer1 proc
         loop draw_line     ; Repeat for the entire line
     ret
 drawPlayer1 endp
+
 drawPlayer2 proc
     mov di, [player2Pos]          ; Load the player's current position
     
@@ -181,16 +184,17 @@ drawBall proc
 
     ; Clear the previous ball (color 0)
     mov al, 0
-    mov es:[di], al
-    mov es:[di+1], al
-    mov es:[di+2], al
+    mov es:[di+319], al
     mov es:[di+320], al
     mov es:[di+321], al
-    mov es:[di+322], al
-    mov es:[di+640], al
-    mov es:[di+641], al
-    mov es:[di+642], al
 
+    mov es:[di], al
+    mov es:[di-1], al
+    mov es:[di+1], al
+
+    mov es:[di-319], al
+    mov es:[di-320], al
+    mov es:[di-321], al
     ; Calculate the position in video memory
     mov ax, ballY
     mov bx, 320
@@ -204,15 +208,17 @@ drawBall proc
 
     ; Draw the ball (color 15)
     mov al, 15
+    mov es:[di-319], al
+    mov es:[di-320], al
+    mov es:[di-321], al
+
     mov es:[di], al
+    mov es:[di-1], al
     mov es:[di+1], al
-    mov es:[di+2], al
+
+    mov es:[di+319], al
     mov es:[di+320], al
     mov es:[di+321], al
-    mov es:[di+322], al
-    mov es:[di+640], al
-    mov es:[di+641], al
-    mov es:[di+642], al
     ret
 drawBall endp
 
@@ -224,10 +230,27 @@ updateBallPos proc
     add ax, bx
     mov [ballX], ax
 
+    ; Calculate the position in video memory
+    mov ax, ballY
+    mov bx, 320
+    mul bx
+    add ax, ballX
+    mov di, ax
+
+    ; Check on the left and right for the player paddle
+    mov bx, es:[di-2]
+    cmp bx, 15
+    je paddleHit
+    
+    mov bx, es:[di+1]
+    cmp bx, 15
+    je paddleHit
+
     ; Check for collision with left or right wall
+    mov ax, [ballX]
     cmp ax, 1
     jl reverseXDir
-    cmp ax, 316
+    cmp ax, 319
     jg reverseXDir
     jmp checkY
 
@@ -242,11 +265,11 @@ updateBallPos proc
         mov bx, [ballDirY]
         add ax, bx
         mov [ballY], ax
-
+    
         ; Check for collision with top or bottom wall
         cmp ax, 1
         jl reverseYDir
-        cmp ax, 196
+        cmp ax, 199
         jg reverseYDir
         jmp endUpdate
 
@@ -256,6 +279,10 @@ updateBallPos proc
 
     endUpdate:
         ret
+    paddleHit:
+        neg [ballDirX]
+        ret
+
 updateBallPos endp
 
 ClearScreen proc
