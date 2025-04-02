@@ -7,7 +7,8 @@
     ballDirY    dw 1
     prevBallX   dw 1
     prevBallY   dw 1
-    score       dw 0
+    p1score     dw 0
+    p2score     dw 0
     player1Pos  dw 10
     player2Pos  dw 310
     prevPlayer1Pos dw 0
@@ -16,6 +17,7 @@
     p1Down      dw 0
     p2Up        dw 0
     p2Down      dw 0
+    numStr      db 6 DUP ('$')
 
 .code
 PUBLIC _Input
@@ -23,7 +25,6 @@ PUBLIC _FrameUpdate
 PUBLIC _Setup
 PUBLIC _Exit
 
-;description
 _Setup proc
     mov ax, @data
     mov ds, ax
@@ -43,21 +44,11 @@ _FrameUpdate PROC FAR
 _FrameUpdate ENDP
 
 _Exit PROC
-    MOV AH, 00
-    MOV AL, 03h    
-    INT 10h        
+    mov ah, 00
+    mov al, 03h    
+    int 10h        
     retf
 _Exit ENDP
-
-gameCycle proc
-    call Input
-    call drawPlayer1
-    call drawPlayer2
-
-    call updateBallPos
-    call drawBall
-    ret
-gameCycle endp
 
 _Input PROC FAR
     mov bp, sp       
@@ -74,6 +65,58 @@ _Input PROC FAR
         
     retf
 _Input ENDP
+
+gameCycle proc
+    call Input
+    call drawPlayer1
+    call drawPlayer2
+    
+    call updateBallPos
+    call drawBall
+
+    call updateP1Score
+    call updateP2Score
+    ret
+gameCycle endp
+
+num_to_str proc
+    ; converts a 16-bit ax number to a string
+    ; input: ax = number
+    ; output: dx -> string buffer (numStr)
+    
+    push ax
+    push bx
+    push cx
+    push dx
+
+    mov cx, 0       ; digit count
+    mov bx, 10      ; base 10 divisor
+
+    convert_loop:
+        mov dx, 0       ; clear dx before division
+        div bx          ; ax / 10, remainder in dx
+        add dl, '0'     ; convert remainder to ascii
+        push dx         ; store digit on stack
+        inc cx          ; increment digit count
+        test ax, ax     ; check if ax == 0
+        jnz convert_loop ; repeat until ax == 0
+
+        ; store result in buffer
+        mov di, offset numStr
+    store_loop:
+        pop dx
+        mov [di], dl
+        inc di
+        loop store_loop
+
+    mov byte ptr [di], '$' ; string terminator for dos int 21h
+
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+num_to_str endp
 
 Input proc
     cmp [p1Up], 1
@@ -124,8 +167,8 @@ drawPlayer1 proc
 
     mov di, prevPlayer1Pos          ; Load the player's current position
     clear_line:
-        mov es:[di], al   
-        mov es:[di+1], al 
+        mov es:[di-2], al   
+        mov es:[di-1], al 
         add di, 320        ; Move to the next row (320 bytes per row in mode 13h)
         loop clear_line    ; Repeat for the entire line
 
@@ -135,8 +178,8 @@ drawPlayer1 proc
         mov di, player1Pos          ; Load the player's current position
 
     draw_line:
-        mov es:[di], al    
-        mov es:[di+1], al 
+        mov es:[di-2], al    
+        mov es:[di-1], al 
         add di, 320        ; Move to the next row (320 bytes per row in mode 13h)
         loop draw_line     ; Repeat for the entire line
     ret
@@ -207,7 +250,7 @@ drawBall proc
     mov es, ax
 
     ; Draw the ball (color 15)
-    mov al, 15
+    mov al, 7
     mov es:[di-319], al
     mov es:[di-320], al
     mov es:[di-321], al
@@ -221,6 +264,58 @@ drawBall proc
     mov es:[di+321], al
     ret
 drawBall endp
+
+updateP1Score proc
+    mov ax, [p1Score]
+    call num_to_str
+
+    mov ah, 02h
+    mov bh, 0         
+    mov dh, 12  ; Row
+    mov dl, 0  ; Column
+    int 10h           ; Set cursor
+
+    ; Print the number string in red
+    lea si, numStr  ; Load string pointer
+
+    print_loop1:
+        mov al, [si]    ; Get character
+        cmp al, '$'     ; End of string?
+        je done1
+        mov ah, 0Eh     ; BIOS teletype mode
+        mov bl, 7       
+        int 10H         ; Print character
+        inc si          ; Next character
+        jmp print_loop1  ; Repeat
+    done1:
+    ret
+updateP1Score endp
+
+updateP2Score proc
+    mov ax, [p2Score]
+    call num_to_str
+
+    mov ah, 02h
+    mov bh, 0         
+    mov dh, 12  ; Row
+    mov dl, 39  ; Column
+    int 10h           ; Set cursor
+
+    ; Print the number string in red
+    lea si, numStr  ; Load string pointer
+
+    print_loop2:
+        mov al, [si]    ; Get character
+        cmp al, '$'     ; End of string?
+        je done2
+        mov ah, 0Eh     ; BIOS teletype mode
+        mov bl, 7       
+        int 10H         ; Print character
+        inc si          ; Next character
+        jmp print_loop2  ; Repeat
+    done2:
+    ret
+updateP2Score endp
 
 updateBallPos proc
     ; Update X position
@@ -240,11 +335,11 @@ updateBallPos proc
     ; Check on the left and right for the player paddle
     mov bx, es:[di-2]
     cmp bx, 15
-    je paddleHit
+    je paddleHitP1
     
     mov bx, es:[di+1]
     cmp bx, 15
-    je paddleHit
+    je paddleHitP2
 
     ; Check for collision with left or right wall
     mov ax, [ballX]
@@ -255,7 +350,6 @@ updateBallPos proc
     jmp checkY
 
     reverseXDir:
-        inc [score]
         neg [ballDirX]
 
     checkY:
@@ -274,15 +368,18 @@ updateBallPos proc
         jmp endUpdate
 
     reverseYDir:
-        inc [score]
         neg [ballDirY]
 
     endUpdate:
         ret
-    paddleHit:
+    paddleHitP1:
         neg [ballDirX]
+        inc p1Score
         ret
-
+    paddleHitP2:
+        neg [ballDirX]
+        inc p2Score
+        ret
 updateBallPos endp
 
 ClearScreen proc
