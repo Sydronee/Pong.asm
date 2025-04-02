@@ -33,6 +33,7 @@ _Setup proc
 
     mov ax, 13h
     int 10h            ; Set video mode 13h (320x200, 256 colors)
+    call playSound     ; Clear speaker stream
     retf
 _Setup endp
 
@@ -167,8 +168,8 @@ drawPlayer1 proc
 
     mov di, prevPlayer1Pos          ; Load the player's current position
     clear_line:
-        mov es:[di-2], al   
-        mov es:[di-1], al 
+        mov es:[di+10], al   
+        mov es:[di+11], al
         add di, 320        ; Move to the next row (320 bytes per row in mode 13h)
         loop clear_line    ; Repeat for the entire line
 
@@ -178,8 +179,8 @@ drawPlayer1 proc
         mov di, player1Pos          ; Load the player's current position
 
     draw_line:
-        mov es:[di-2], al    
-        mov es:[di-1], al 
+        mov es:[di+10], al    
+        mov es:[di+11], al 
         add di, 320        ; Move to the next row (320 bytes per row in mode 13h)
         loop draw_line     ; Repeat for the entire line
     ret
@@ -197,8 +198,8 @@ drawPlayer2 proc
     mov si, [prevPlayer2Pos]
 
     clear_line2:
-        mov es:[si+319], al  
-        mov es:[si+320], al  
+        mov es:[si-10], al  
+        mov es:[si-11], al  
         add si, 320        ; Move to the next row (320 bytes per row in mode 13h)
         loop clear_line2    ; Repeat for the entire line
 
@@ -207,8 +208,8 @@ drawPlayer2 proc
         mov al, 15         ; Color (white)
 
     draw_line2:
-        mov es:[di+319], al  
-        mov es:[di+320], al  
+        mov es:[di-10], al  
+        mov es:[di-11], al  
         add di, 320        ; Move to the next row (320 bytes per row in mode 13h)
         loop draw_line2     ; Repeat for the entire line
     ret
@@ -298,7 +299,7 @@ updateP2Score proc
     mov ah, 02h
     mov bh, 0         
     mov dh, 12  ; Row
-    mov dl, 39  ; Column
+    mov dl, 38  ; Column
     int 10h           ; Set cursor
 
     ; Print the number string in red
@@ -373,14 +374,40 @@ updateBallPos proc
     endUpdate:
         ret
     paddleHitP1:
+        call playSound
         neg [ballDirX]
         inc p1Score
         ret
     paddleHitP2:
+        call playSound
         neg [ballDirX]
         inc p2Score
         ret
 updateBallPos endp
+
+playSound proc
+    mov al, 182    ; Set PIT channel 2 to square wave mode
+    out 43h, al
+
+    mov ax, 3500   ; Frequency (Higher number = Lower pitch)
+    out 42h, al   
+    mov al, ah
+    out 42h, al   
+
+    in al, 61h     
+    or al, 3       ; Turn on speaker
+    out 61h, al
+
+    mov cx, 30000  ; Delay loop for sound duration
+    delay_loop:
+        loop delay_loop
+
+        in al, 61h     
+        and al, 0FCh   ; Turn off speaker
+        out 61h, al
+
+    ret
+playSound endp
 
 ClearScreen proc
     mov ax, 0A000h          ; Set ES to video memory segment
