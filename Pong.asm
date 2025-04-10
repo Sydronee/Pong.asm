@@ -18,16 +18,18 @@
     p2Up        dw 0
     p2Down      dw 0
     numStr      db 6 DUP ('$')
+    modeStr     db "SinglePlayer(1) or MultiPlayer(2): $"
+    mode        db 0
 
 .code
 PUBLIC _Input
 PUBLIC _FrameUpdate
 PUBLIC _Setup
 PUBLIC _Exit
+PUBLIC _Menu
+PUBLIC _ModeSelect
 
-_Setup proc
-    mov ax, @data
-    mov ds, ax
+_Setup proc FAR
     mov ax, 0A000h     ; Set ES to video memory segment (A000h)
     mov es, ax
 
@@ -44,10 +46,9 @@ _FrameUpdate PROC FAR
     retf
 _FrameUpdate ENDP
 
-_Exit PROC
-    mov ah, 00
-    mov al, 03h    
-    int 10h        
+_Exit PROC FAR
+    mov ax, 4C00h
+    int 21h
     retf
 _Exit ENDP
 
@@ -66,6 +67,36 @@ _Input PROC FAR
         
     retf
 _Input ENDP
+
+_ModeSelect PROC FAR
+    push ax
+    push bx
+    push dx
+
+    mov ax, @data
+    mov ds, ax
+
+    lea dx, modeStr
+    mov ah, 9
+    int 21h         ; print the string
+
+    mov ah, 1
+    int 21h         ; read key into AL
+
+    sub al, '0'     ; convert to number (if key is '0'–'9')
+    mov mode, al
+
+    ; echo the mode value back
+    mov dl, al
+    add dl, '0'
+    mov ah, 2
+    int 21h
+
+    pop dx
+    pop bx
+    pop ax
+    retf
+_ModeSelect ENDP
 
 gameCycle proc
     call Input
@@ -124,6 +155,7 @@ Input proc
     jne next01
     cmp [player1Pos], 10
     jbe next01
+
     mov ax, [player1Pos]
     mov [prevPlayer1Pos], ax
     sub [player1Pos], 320
@@ -133,30 +165,69 @@ Input proc
     jne next02
     cmp [player1Pos], 320*175
     jae next02
+
     mov ax, [player1Pos]
     mov [prevPlayer1Pos], ax
     add [player1Pos], 320
     
     next02:
+    cmp mode, 1        
+    je next04
+
     cmp [p2Up], 1
     jne next03
     cmp [player2Pos], 310
     jbe next03
+
     mov ax, [player2Pos]
     mov [prevPlayer2Pos], ax
     sub [player2Pos], 320
     
     next03:
     cmp [p2Down], 1
-    jne next04
+    jne multiDone
     cmp [player2Pos], 320*175
-    jae next04
+    jae multiDone
+
     mov ax, [player2Pos]
     mov [prevPlayer2Pos], ax
     add [player2Pos], 320
-    
-    next04:
+
+    multiDone:
     ret
+
+    ; Player 2 becomes the AI in Single Player
+    next04: 
+        mov ax, ballY
+        mov bx, 320
+        mul bx
+        mov si, ax
+
+        mov bx, [player2Pos]
+        mov dx, bx
+        add dx, 2240
+
+        cmp dx, si
+        ja AImoveUp
+
+        cmp bx, 56000
+        jae exitAI
+
+        mov [prevPlayer2Pos], bx
+        add bx, 320
+        mov [player2Pos], bx
+        jmp exitAI
+
+    AImoveUp:
+        cmp bx, 320
+        jbe exitAI
+
+        mov [prevPlayer2Pos], bx
+        sub bx, 320
+        mov [player2Pos], bx
+
+    exitAI:
+        ret
 Input endp
 
 drawPlayer1 proc
@@ -232,8 +303,8 @@ drawBall proc
     mov es:[di+320], al
     mov es:[di+321], al
 
-    mov es:[di], al
     mov es:[di-1], al
+    mov es:[di], al
     mov es:[di+1], al
 
     mov es:[di-319], al
@@ -267,7 +338,7 @@ drawBall proc
 drawBall endp
 
 updateP1Score proc
-    mov ax, [p1Score]
+    mov ax, [player2Pos]
     call num_to_str
 
     mov ah, 02h
@@ -293,13 +364,13 @@ updateP1Score proc
 updateP1Score endp
 
 updateP2Score proc
-    mov ax, [p2Score]
+    mov ax, ballY
     call num_to_str
 
     mov ah, 02h
     mov bh, 0         
     mov dh, 12  ; Row
-    mov dl, 38  ; Column
+    mov dl, 30  ; Column
     int 10h           ; Set cursor
 
     ; Print the number string in red
