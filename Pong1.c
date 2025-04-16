@@ -7,6 +7,7 @@ extern void far Setup();
 extern void far FrameUpdate();
 extern void far Input(int a, int b, int c, int d);
 extern void far Exit();
+extern void far Menu();
 extern void far ModeSelect();
 
 int main()
@@ -14,14 +15,12 @@ int main()
 	ModeSelect();
 	install_key_handler();
 	Setup();
-	while(1){
-		while (!is_key_pressed(1))
-		{
-			Input(is_key_pressed(','), is_key_pressed('-'), is_key_pressed('K'), is_key_pressed('M'));
-			// 					left				right				up					down
-			FrameUpdate();
-			delay(10);
-		}
+	while (!is_key_pressed(1))
+	{
+		Input(is_key_pressed(','), is_key_pressed('-'), is_key_pressed('K'), is_key_pressed('M'));
+		// 					left				right				up					down
+		FrameUpdate();
+		delay(10);
 	}
 	uninstall_key_handler();
 	Exit();

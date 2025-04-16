@@ -338,7 +338,7 @@ drawBall proc
 drawBall endp
 
 updateP1Score proc
-    mov ax, [player2Pos]
+    mov ax, p1Score
     call num_to_str
 
     mov ah, 02h
@@ -364,13 +364,13 @@ updateP1Score proc
 updateP1Score endp
 
 updateP2Score proc
-    mov ax, ballY
+    mov ax, p2Score
     call num_to_str
 
     mov ah, 02h
     mov bh, 0         
     mov dh, 12  ; Row
-    mov dl, 30  ; Column
+    mov dl, 38  ; Column
     int 10h           ; Set cursor
 
     ; Print the number string in red
