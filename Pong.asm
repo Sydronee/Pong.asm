@@ -19,14 +19,16 @@
     p2Down      dw 0
     numStr      db 6 DUP ('$')
     modeStr     db "SinglePlayer(1) or MultiPlayer(2): $"
+    p1Wins      db "PLAYER 1 WINS!$"
+    p2Wins      db "PLAYER 2 WINS!$"
     mode        db 0
+    winCon      db 0
 
 .code
 PUBLIC _Input
 PUBLIC _FrameUpdate
 PUBLIC _Setup
 PUBLIC _Exit
-PUBLIC _Menu
 PUBLIC _ModeSelect
 
 _Setup proc FAR
@@ -108,8 +110,71 @@ gameCycle proc
 
     call updateP1Score
     call updateP2Score
+
+    call winCondition
     ret
 gameCycle endp
+
+winCondition proc
+    cmp p1Score, 15
+    je p1Win
+
+    cmp p2Score, 15
+    je p2Win
+
+    jmp noWin
+    
+    p1Win:
+    mov winCon, 1
+    call ClearScreen
+    mov ah, 02h
+    mov bh, 0         
+    mov dh, 12  ; Row
+    mov dl, 14  ; Column
+    int 10h     ; Set cursor
+
+    ; Print the number string in red
+    lea si, p1Wins  ; Load string pointer
+
+    print11:
+        mov al, [si]    ; Get character
+        cmp al, '$'     ; End of string?
+        je noWin
+        mov ah, 0Eh     ; BIOS teletype mode
+        mov bl, 7       
+        int 10H         ; Print character
+        inc si          ; Next character
+        jmp print11  ; Repeat
+
+    p2Win:
+    mov winCon, 1
+    call ClearScreen
+    mov ah, 02h
+    mov bh, 0         
+    mov dh, 12  ; Row
+    mov dl, 14  ; Column
+    int 10h     ; Set cursor
+
+    ; Print the number string in red
+    lea si, p2Wins  ; Load string pointer
+
+    print22:
+        mov al, [si]    ; Get character
+        cmp al, '$'     ; End of string?
+        je noWin
+        mov ah, 0Eh     ; BIOS teletype mode
+        mov bl, 7       
+        int 10H         ; Print character
+        inc si          ; Next character
+        jmp print22  ; Repeat
+
+    noWin:
+    cmp winCon, 1
+    jne endWin 
+    call _Exit
+    endWin:
+    ret
+winCondition endp 
 
 num_to_str proc
     ; converts a 16-bit ax number to a string
@@ -371,7 +436,7 @@ updateP2Score proc
     mov bh, 0         
     mov dh, 12  ; Row
     mov dl, 38  ; Column
-    int 10h           ; Set cursor
+    int 10h     ; Set cursor
 
     ; Print the number string in red
     lea si, numStr  ; Load string pointer
