@@ -11,6 +11,3 @@
 *.COM
 /.vscode
 *.MAP
-
-test.*
-build.bat
